@@ -34,6 +34,8 @@ class BtBibleKeyWidget : public QWidget  {
         bool setKey(CSwordVerseKey* key);
         void setModule(const CSwordBibleModuleInfo *m = nullptr);
         bool eventFilter(QObject *o, QEvent *e) override;
+        
+        const CSwordBibleModuleInfo* module() const { return m_module; }
 
     Q_SIGNALS:
         void changed(CSwordVerseKey* key);
@@ -49,8 +51,6 @@ class BtBibleKeyWidget : public QWidget  {
 
     private: // methods:
 
-        /** Populates the book selection menu with organized two-column layout when applicable */
-        void populateBookMenu(QMenu & menu);
         void populateChapterMenu(QMenu & menu);
         void populateVerseMenu(QMenu & menu);
 

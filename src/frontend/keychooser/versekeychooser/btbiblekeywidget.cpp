@@ -30,6 +30,7 @@
 #include "../../../util/cresmgr.h"
 #include "../cscrollerwidgetset.h"
 #include "btdropdownchooserbutton.h"
+#include "btbookchooserbutton.h"
 
 
 class BtLineEdit : public QLineEdit {
@@ -125,21 +126,18 @@ BtBibleKeyWidget::BtBibleKeyWidget(
     m_dropDownButtons->setCursor(Qt::ArrowCursor);
     QHBoxLayout *dropDownButtonsLayout(new QHBoxLayout(m_dropDownButtons));
 
-    auto * const bookChooser =
-            new BtDropdownChooserButton(&BtBibleKeyWidget::populateBookMenu,
-                                        *this);
+    auto * const bookChooser = new BtBookChooserButton(*this);
     bookChooser->setToolTip(tr("Select book"));
-    BT_CONNECT(bookChooser->menu(), &QMenu::triggered,
-               [this](QAction * const action) {
-                    auto bookname = action->property("bookname").toString();
+    BT_CONNECT(bookChooser, &BtBookChooserButton::bookSelected,
+               [this](const QString & bookname) {
                     if (m_key->bookName() != bookname) {
-                        m_key->setBookName(std::move(bookname));
+                        m_key->setBookName(bookname);
                         updateText();
                     }
                     if (!updatelock)
                         Q_EMIT changed(m_key);
                });
-    BT_CONNECT(bookChooser, &BtDropdownChooserButton::stepItem, slotStepBook);
+    BT_CONNECT(bookChooser, &BtBookChooserButton::stepItem, slotStepBook);
     dropDownButtonsLayout->addWidget(bookChooser, 2);
 
     auto * const chapterChooser =
@@ -313,53 +311,6 @@ bool BtBibleKeyWidget::setKey(CSwordVerseKey *key) {
 
     m_key->setKey(key->key());
     return true;
-}
-
-void BtBibleKeyWidget::populateBookMenu(QMenu & menu) {
-    auto const & books = m_module->books();
-    
-    // Check if we have both Old and New Testament books to create organized layout
-    bool hasOT = m_module->hasOldTestament();
-    bool hasNT = m_module->hasNewTestament();
-    
-    if (hasOT && hasNT && books.size() > 20) {
-        // Add Old Testament books
-        bool addedOTHeader = false;
-        for (auto const & bookname : books) {
-            // Create a temporary key to check which testament this book belongs to
-            CSwordVerseKey tempKey(*m_key);
-            tempKey.setBookName(bookname);
-            
-            if (tempKey.testament() == 1) { // Old Testament
-                if (!addedOTHeader) {
-                    if (!menu.isEmpty()) menu.addSeparator();
-                    QAction * headerAction = menu.addAction(tr("── Old Testament ──"));
-                    headerAction->setEnabled(false); // Make it non-clickable header
-                    addedOTHeader = true;
-                }
-                menu.addAction(bookname)->setProperty("bookname", bookname);
-            }
-        }
-        
-        // Add separator and New Testament books
-        if (addedOTHeader) menu.addSeparator();
-        QAction * ntHeaderAction = menu.addAction(tr("── New Testament ──"));
-        ntHeaderAction->setEnabled(false); // Make it non-clickable header
-        
-        for (auto const & bookname : books) {
-            // Create a temporary key to check which testament this book belongs to
-            CSwordVerseKey tempKey(*m_key);
-            tempKey.setBookName(bookname);
-            
-            if (tempKey.testament() == 2) { // New Testament
-                menu.addAction(bookname)->setProperty("bookname", bookname);
-            }
-        }
-    } else {
-        // For modules with fewer books or only one testament, use simple layout
-        for (auto const & bookname : books)
-            menu.addAction(bookname)->setProperty("bookname", bookname);
-    }
 }
 
 void BtBibleKeyWidget::populateChapterMenu(QMenu & menu) {
