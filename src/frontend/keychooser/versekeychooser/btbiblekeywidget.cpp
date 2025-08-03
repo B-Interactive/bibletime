@@ -316,8 +316,50 @@ bool BtBibleKeyWidget::setKey(CSwordVerseKey *key) {
 }
 
 void BtBibleKeyWidget::populateBookMenu(QMenu & menu) {
-    for (auto const & bookname : m_module->books())
-        menu.addAction(bookname)->setProperty("bookname", bookname);
+    auto const & books = m_module->books();
+    
+    // Check if we have both Old and New Testament books to create organized layout
+    bool hasOT = m_module->hasOldTestament();
+    bool hasNT = m_module->hasNewTestament();
+    
+    if (hasOT && hasNT && books.size() > 20) {
+        // Add Old Testament books
+        bool addedOTHeader = false;
+        for (auto const & bookname : books) {
+            // Create a temporary key to check which testament this book belongs to
+            CSwordVerseKey tempKey(*m_key);
+            tempKey.setBookName(bookname);
+            
+            if (tempKey.testament() == 1) { // Old Testament
+                if (!addedOTHeader) {
+                    if (!menu.isEmpty()) menu.addSeparator();
+                    QAction * headerAction = menu.addAction(tr("── Old Testament ──"));
+                    headerAction->setEnabled(false); // Make it non-clickable header
+                    addedOTHeader = true;
+                }
+                menu.addAction(bookname)->setProperty("bookname", bookname);
+            }
+        }
+        
+        // Add separator and New Testament books
+        if (addedOTHeader) menu.addSeparator();
+        QAction * ntHeaderAction = menu.addAction(tr("── New Testament ──"));
+        ntHeaderAction->setEnabled(false); // Make it non-clickable header
+        
+        for (auto const & bookname : books) {
+            // Create a temporary key to check which testament this book belongs to
+            CSwordVerseKey tempKey(*m_key);
+            tempKey.setBookName(bookname);
+            
+            if (tempKey.testament() == 2) { // New Testament
+                menu.addAction(bookname)->setProperty("bookname", bookname);
+            }
+        }
+    } else {
+        // For modules with fewer books or only one testament, use simple layout
+        for (auto const & bookname : books)
+            menu.addAction(bookname)->setProperty("bookname", bookname);
+    }
 }
 
 void BtBibleKeyWidget::populateChapterMenu(QMenu & menu) {
