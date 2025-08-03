@@ -343,6 +343,12 @@ void BtBibleKeyWidget::populateBookMenu(QMenu & menu) {
     QStringList otBooks, ntBooks;
     categorizeBooks(otBooks, ntBooks);
     
+    // If no books are available, add a placeholder
+    if (otBooks.isEmpty() && ntBooks.isEmpty()) {
+        menu.addAction(tr("No books available"))->setEnabled(false);
+        return;
+    }
+    
     // Create a custom widget for the two-column layout
     QWidget* menuWidget = new QWidget(&menu);
     QHBoxLayout* mainLayout = new QHBoxLayout(menuWidget);
