@@ -22,161 +22,94 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWheelEvent>
-#include <QScrollArea>
+#include <QMenu>
+#include <QWidgetAction>
 
 const unsigned int ARROW_HEIGHT = 15;
 
-// BtBookPopup implementation
-BtBookPopup::BtBookPopup(QWidget* parent)
-    : QWidget(parent)
-{
-    setWindowFlags(Qt::Popup | Qt::FramelessWindowHint);
-    setAttribute(Qt::WA_DeleteOnClose, false);
-    setFocusPolicy(Qt::StrongFocus);
-    
-    // Main layout - no scroll area for now to simplify
-    m_mainLayout = new QVBoxLayout(this);
-    m_mainLayout->setContentsMargins(5, 5, 5, 5);
-    m_mainLayout->setSpacing(5);
-    
-    // Two-column layout directly in main layout
-    m_columnsLayout = new QHBoxLayout();
-    m_columnsLayout->setContentsMargins(0, 0, 0, 0);
-    m_columnsLayout->setSpacing(15);
-    
-    // Left and right columns with equal stretch
-    m_leftColumn = new QVBoxLayout();
-    m_leftColumn->setSpacing(2);
-    m_leftColumn->setAlignment(Qt::AlignTop);
-    
-    m_rightColumn = new QVBoxLayout();
-    m_rightColumn->setSpacing(2);
-    m_rightColumn->setAlignment(Qt::AlignTop);
-    
-    m_columnsLayout->addLayout(m_leftColumn, 1);  // Equal stretch
-    m_columnsLayout->addLayout(m_rightColumn, 1); // Equal stretch
-    
-    m_mainLayout->addLayout(m_columnsLayout);
-    
-    // Set larger size to ensure columns are visible
-    setFixedSize(500, 400);
-    
-    // Apply better styling
-    setStyleSheet(
-        "BtBookPopup {"
-        "   background-color: white;"
-        "   border: 2px solid black;"
-        "   border-radius: 4px;"
-        "}"
-        "QPushButton {"
-        "   text-align: left;"
-        "   padding: 6px 12px;"
-        "   border: none;"
-        "   background: transparent;"
-        "   min-width: 140px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #3498db;"
-        "   color: white;"
-        "}"
-    );
-}
+// BtTwoColumnBookWidget - Widget for displaying books in two columns within a QMenu
+class BtTwoColumnBookWidget : public QWidget {
+    Q_OBJECT
 
-void BtBookPopup::setBooks(const QStringList& books) {
-    clear();
-    
-    if (books.isEmpty()) {
-        return;  // No books to display
+public:
+    explicit BtTwoColumnBookWidget(const QStringList& books, QWidget* parent = nullptr)
+        : QWidget(parent)
+    {
+        setupLayout(books);
     }
-    
-    // Distribute books between columns for better balance
-    int leftCount = 0;
-    int rightCount = 0;
-    int totalBooks = books.size();
-    int booksPerColumn = (totalBooks + 1) / 2;  // Round up for left column
-    
-    for (const QString& bookName : books) {
-        QPushButton* button = createBookButton(bookName);
-        
-        // Put first half in left column, rest in right column
-        if (leftCount < booksPerColumn) {
-            m_leftColumn->addWidget(button);
-            leftCount++;
-        } else {
-            m_rightColumn->addWidget(button);
-            rightCount++;
+
+Q_SIGNALS:
+    void bookSelected(const QString& bookName);
+
+private slots:
+    void onBookButtonClicked() {
+        if (QPushButton* button = qobject_cast<QPushButton*>(sender())) {
+            QString bookName = button->text();
+            Q_EMIT bookSelected(bookName);
         }
     }
-}
 
-void BtBookPopup::popup(const QPoint& pos) {
-    // Get the screen that contains the point where popup should appear
-    QScreen* screen = QApplication::screenAt(pos);
-    if (!screen) {
-        screen = QApplication::primaryScreen();
+private:
+    void setupLayout(const QStringList& books) {
+        // Main horizontal layout for two columns
+        QHBoxLayout* mainLayout = new QHBoxLayout(this);
+        mainLayout->setContentsMargins(8, 8, 8, 8);
+        mainLayout->setSpacing(12);
+        
+        // Left and right column layouts
+        QVBoxLayout* leftColumn = new QVBoxLayout();
+        QVBoxLayout* rightColumn = new QVBoxLayout();
+        leftColumn->setSpacing(2);
+        rightColumn->setSpacing(2);
+        leftColumn->setAlignment(Qt::AlignTop);
+        rightColumn->setAlignment(Qt::AlignTop);
+        
+        // Distribute books between columns
+        int totalBooks = books.size();
+        int booksPerColumn = (totalBooks + 1) / 2; // Round up for left column
+        
+        for (int i = 0; i < totalBooks; ++i) {
+            QPushButton* button = new QPushButton(books[i], this);
+            button->setFlat(true);
+            button->setStyleSheet(
+                "QPushButton {"
+                "   text-align: left;"
+                "   padding: 6px 12px;"
+                "   border: none;"
+                "   background: transparent;"
+                "   min-width: 120px;"
+                "}"
+                "QPushButton:hover {"
+                "   background-color: #3498db;"
+                "   color: white;"
+                "   border-radius: 2px;"
+                "}"
+            );
+            
+            connect(button, &QPushButton::clicked, this, &BtTwoColumnBookWidget::onBookButtonClicked);
+            
+            // Add to left column for first half, right column for remainder
+            if (i < booksPerColumn) {
+                leftColumn->addWidget(button);
+            } else {
+                rightColumn->addWidget(button);
+            }
+        }
+        
+        mainLayout->addLayout(leftColumn, 1);
+        mainLayout->addLayout(rightColumn, 1);
+        
+        // Set reasonable size
+        setMinimumSize(300, 400);
+        setMaximumSize(500, 600);
     }
-    
-    // Ensure the popup appears on screen
-    QRect screenGeometry = screen->availableGeometry();
-    QPoint adjustedPos = pos;
-    
-    // Adjust position if it would go off-screen
-    if (adjustedPos.x() + width() > screenGeometry.right()) {
-        adjustedPos.setX(screenGeometry.right() - width());
-    }
-    if (adjustedPos.y() + height() > screenGeometry.bottom()) {
-        adjustedPos.setY(pos.y() - height());
-    }
-    
-    move(adjustedPos);
-    show();
-    raise();
-    activateWindow();
-    setFocus();
-}
-
-void BtBookPopup::clear() {
-    // Clear both columns
-    QLayoutItem* item;
-    while ((item = m_leftColumn->takeAt(0)) != nullptr) {
-        delete item->widget();
-        delete item;
-    }
-    while ((item = m_rightColumn->takeAt(0)) != nullptr) {
-        delete item->widget();
-        delete item;
-    }
-}
-
-QPushButton* BtBookPopup::createBookButton(const QString& bookName) {
-    QPushButton* button = new QPushButton(bookName, this);
-    button->setFlat(true);
-    
-    connect(button, &QPushButton::clicked, [this, bookName]() {
-        Q_EMIT bookSelected(bookName);
-        hide();
-    });
-    
-    return button;
-}
-
-void BtBookPopup::focusOutEvent(QFocusEvent* event) {
-    Q_UNUSED(event)
-    hide();
-}
-
-void BtBookPopup::keyPressEvent(QKeyEvent* event) {
-    if (event->key() == Qt::Key_Escape) {
-        hide();
-    }
-    QWidget::keyPressEvent(event);
-}
+};
 
 // BtBookChooserButton implementation
 BtBookChooserButton::BtBookChooserButton(BtBibleKeyWidget& parent)
     : QToolButton(&parent)
     , m_parent(parent)
-    , m_popup(nullptr)
+    , m_menu(nullptr)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setAutoRaise(false);
@@ -190,26 +123,46 @@ BtBookChooserButton::BtBookChooserButton(BtBibleKeyWidget& parent)
         "}"
     );
     
-    // Create popup
-    m_popup = new BtBookPopup(this);
-    connect(m_popup, &BtBookPopup::bookSelected,
-            this, &BtBookChooserButton::bookSelected);
+    // Create the menu
+    m_menu = new QMenu(this);
+    setMenu(m_menu);
+    setPopupMode(QToolButton::InstantPopup);
+    
+    // Connect to populate menu when it's about to show
+    connect(m_menu, &QMenu::aboutToShow, this, &BtBookChooserButton::populateMenu);
 }
 
-void BtBookChooserButton::mousePressEvent(QMouseEvent* e) {
-    if (e->button() == Qt::LeftButton) {
-        // Get books from parent and populate popup
-        auto books = m_parent.module()->books();
-        m_popup->setBooks(books);
-        
-        // Position popup below button
-        QPoint pos = mapToGlobal(QPoint(0, height()));
-        m_popup->popup(pos);
-        
-        e->accept();
-    } else {
-        QToolButton::mousePressEvent(e);
+void BtBookChooserButton::populateMenu() {
+    // Clear existing menu items
+    m_menu->clear();
+    
+    // Get books from parent module
+    if (!m_parent.module()) {
+        return;
     }
+    
+    QStringList books = m_parent.module()->books();
+    if (books.isEmpty()) {
+        return;
+    }
+    
+    // Create the two-column widget
+    BtTwoColumnBookWidget* bookWidget = new BtTwoColumnBookWidget(books, m_menu);
+    
+    // Connect the book selection signal
+    connect(bookWidget, &BtTwoColumnBookWidget::bookSelected, 
+            this, &BtBookChooserButton::onBookSelected);
+    
+    // Create a QWidgetAction to hold our custom widget
+    QWidgetAction* widgetAction = new QWidgetAction(m_menu);
+    widgetAction->setDefaultWidget(bookWidget);
+    m_menu->addAction(widgetAction);
+}
+
+void BtBookChooserButton::onBookSelected(const QString& bookName) {
+    // Hide menu and emit signals
+    m_menu->hide();
+    Q_EMIT bookSelected(bookName);
 }
 
 void BtBookChooserButton::wheelEvent(QWheelEvent* e) {
@@ -221,3 +174,5 @@ void BtBookChooserButton::wheelEvent(QWheelEvent* e) {
         e->accept();
     }
 }
+
+#include "btbookchooserbutton.moc"

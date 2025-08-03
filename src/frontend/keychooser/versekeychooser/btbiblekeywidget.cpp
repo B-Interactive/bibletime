@@ -313,6 +313,11 @@ bool BtBibleKeyWidget::setKey(CSwordVerseKey *key) {
     return true;
 }
 
+void BtBibleKeyWidget::populateBookMenu(QMenu & menu) {
+    for (auto const & bookname : m_module->books())
+        menu.addAction(bookname)->setProperty("bookname", bookname);
+}
+
 void BtBibleKeyWidget::populateChapterMenu(QMenu & menu) {
     int count = m_module->chapterCount(m_key->bibleBook());
     for (int i = 1; i <= count; i++)

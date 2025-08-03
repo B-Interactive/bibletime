@@ -51,6 +51,7 @@ class BtBibleKeyWidget : public QWidget  {
 
     private: // methods:
 
+        void populateBookMenu(QMenu & menu);
         void populateChapterMenu(QMenu & menu);
         void populateVerseMenu(QMenu & menu);
 
