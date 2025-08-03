@@ -17,6 +17,7 @@
 #include <QEvent>
 #include <QFocusEvent>
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
@@ -25,6 +26,8 @@
 #include <QStringList>
 #include <QtGlobal>
 #include <QToolButton>
+#include <QVBoxLayout>
+#include <QWidgetAction>
 #include "../../../backend/keys/cswordversekey.h"
 #include "../../../util/btconnect.h"
 #include "../../../util/cresmgr.h"
@@ -315,9 +318,111 @@ bool BtBibleKeyWidget::setKey(CSwordVerseKey *key) {
     return true;
 }
 
+void BtBibleKeyWidget::categorizeBooks(QStringList & otBooks, QStringList & ntBooks) const {
+    otBooks.clear();
+    ntBooks.clear();
+    
+    if (!m_module)
+        return;
+    
+    // Create a temporary key to determine testament for each book
+    CSwordVerseKey tempKey(m_module);
+    
+    for (auto const & bookname : m_module->books()) {
+        tempKey.setBookName(bookname);
+        if (tempKey.testament() == 1) {
+            otBooks.append(bookname);
+        } else if (tempKey.testament() == 2) {
+            ntBooks.append(bookname);
+        }
+    }
+}
+
 void BtBibleKeyWidget::populateBookMenu(QMenu & menu) {
-    for (auto const & bookname : m_module->books())
-        menu.addAction(bookname)->setProperty("bookname", bookname);
+    // Get books categorized by testament
+    QStringList otBooks, ntBooks;
+    categorizeBooks(otBooks, ntBooks);
+    
+    // Create a custom widget for the two-column layout
+    QWidget* menuWidget = new QWidget(&menu);
+    QHBoxLayout* mainLayout = new QHBoxLayout(menuWidget);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setSpacing(20);
+    
+    // Old Testament column
+    if (!otBooks.isEmpty()) {
+        QWidget* otColumn = new QWidget();
+        QVBoxLayout* otLayout = new QVBoxLayout(otColumn);
+        otLayout->setContentsMargins(0, 0, 0, 0);
+        otLayout->setSpacing(2);
+        
+        // Add header
+        QLabel* otHeader = new QLabel("Old Testament");
+        otHeader->setStyleSheet("font-weight: bold; padding: 5px; background-color: #f0f0f0;");
+        otLayout->addWidget(otHeader);
+        
+        // Add book buttons
+        for (auto const & bookname : otBooks) {
+            QToolButton* bookButton = new QToolButton();
+            bookButton->setText(bookname);
+            bookButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+            bookButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            bookButton->setProperty("bookname", bookname);
+            BT_CONNECT(bookButton, &QToolButton::clicked,
+                       [this, bookname, &menu]() {
+                           if (m_key->bookName() != bookname) {
+                               m_key->setBookName(bookname);
+                               updateText();
+                           }
+                           if (!updatelock)
+                               Q_EMIT changed(m_key);
+                           menu.close();
+                       });
+            otLayout->addWidget(bookButton);
+        }
+        
+        mainLayout->addWidget(otColumn);
+    }
+    
+    // New Testament column  
+    if (!ntBooks.isEmpty()) {
+        QWidget* ntColumn = new QWidget();
+        QVBoxLayout* ntLayout = new QVBoxLayout(ntColumn);
+        ntLayout->setContentsMargins(0, 0, 0, 0);
+        ntLayout->setSpacing(2);
+        
+        // Add header
+        QLabel* ntHeader = new QLabel("New Testament");
+        ntHeader->setStyleSheet("font-weight: bold; padding: 5px; background-color: #f0f0f0;");
+        ntLayout->addWidget(ntHeader);
+        
+        // Add book buttons
+        for (auto const & bookname : ntBooks) {
+            QToolButton* bookButton = new QToolButton();
+            bookButton->setText(bookname);
+            bookButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+            bookButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            bookButton->setProperty("bookname", bookname);
+            BT_CONNECT(bookButton, &QToolButton::clicked,
+                       [this, bookname, &menu]() {
+                           if (m_key->bookName() != bookname) {
+                               m_key->setBookName(bookname);
+                               updateText();
+                           }
+                           if (!updatelock)
+                               Q_EMIT changed(m_key);
+                           menu.close();
+                       });
+            ntLayout->addWidget(bookButton);
+        }
+        
+        mainLayout->addWidget(ntColumn);
+    }
+    
+    // Add the custom widget to the menu as a QWidgetAction
+    QWidgetAction* widgetAction = new QWidgetAction(&menu);
+    widgetAction->setDefaultWidget(menuWidget);
+    menu.addAction(widgetAction);
 }
 
 void BtBibleKeyWidget::populateChapterMenu(QMenu & menu) {

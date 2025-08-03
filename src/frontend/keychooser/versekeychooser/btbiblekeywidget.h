@@ -52,6 +52,9 @@ class BtBibleKeyWidget : public QWidget  {
         void populateBookMenu(QMenu & menu);
         void populateChapterMenu(QMenu & menu);
         void populateVerseMenu(QMenu & menu);
+        
+        // Helper method to categorize books into Old and New Testament
+        void categorizeBooks(QStringList & otBooks, QStringList & ntBooks) const;
 
     private:
 
