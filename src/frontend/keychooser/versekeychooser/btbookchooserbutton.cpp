@@ -14,7 +14,7 @@
 #include "btbiblekeywidget.h"
 
 #include <QApplication>
-#include <QDesktopWidget>
+#include <QScreen>
 #include <QFocusEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -110,8 +110,14 @@ void BtBookPopup::setBooks(const QStringList& books) {
 }
 
 void BtBookPopup::popup(const QPoint& pos) {
+    // Get the screen that contains the point where popup should appear
+    QScreen* screen = QApplication::screenAt(pos);
+    if (!screen) {
+        screen = QApplication::primaryScreen();
+    }
+    
     // Ensure the popup appears on screen
-    QRect screenGeometry = QApplication::desktop()->availableGeometry();
+    QRect screenGeometry = screen->availableGeometry();
     QPoint adjustedPos = pos;
     
     // Adjust position if it would go off-screen
