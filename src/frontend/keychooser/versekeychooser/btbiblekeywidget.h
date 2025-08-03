@@ -49,6 +49,7 @@ class BtBibleKeyWidget : public QWidget  {
 
     private: // methods:
 
+        /** Populates the book selection menu with organized two-column layout when applicable */
         void populateBookMenu(QMenu & menu);
         void populateChapterMenu(QMenu & menu);
         void populateVerseMenu(QMenu & menu);
