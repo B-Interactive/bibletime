@@ -41,7 +41,7 @@ public:
 Q_SIGNALS:
     void bookSelected(const QString& bookName);
 
-private slots:
+private Q_SLOTS:
     void onBookButtonClicked() {
         if (QPushButton* button = qobject_cast<QPushButton*>(sender())) {
             QString bookName = button->text();
