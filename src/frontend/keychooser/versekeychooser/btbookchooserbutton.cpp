@@ -74,15 +74,14 @@ private:
             button->setStyleSheet(
                 "QPushButton {"
                 "   text-align: left;"
-                "   padding: 8px 12px;"
+                "   padding: 0 12px;"
                 "   border: 1px solid transparent;"
                 "   background: transparent;"
                 "   min-width: 120px;"
                 "   min-height: 24px;"
                 "}"
                 "QPushButton:hover {"
-                "   border: 1px solid #ccc;"
-                "   background-color: rgba(0,0,0,0.05);"
+                "   background-color: rgba(128,128,128,0.1);"
                 "}"
             );
             
