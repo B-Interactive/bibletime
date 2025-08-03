@@ -34,28 +34,17 @@ BtBookPopup::BtBookPopup(QWidget* parent)
     setAttribute(Qt::WA_DeleteOnClose, false);
     setFocusPolicy(Qt::StrongFocus);
     
-    // Main layout
+    // Main layout - no scroll area for now to simplify
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(5, 5, 5, 5);
-    m_mainLayout->setSpacing(0);
+    m_mainLayout->setSpacing(5);
     
-    // Create scroll area for content
-    QScrollArea* scrollArea = new QScrollArea(this);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    scrollArea->setFrameStyle(QFrame::Box);
+    // Two-column layout directly in main layout
+    m_columnsLayout = new QHBoxLayout();
+    m_columnsLayout->setContentsMargins(0, 0, 0, 0);
+    m_columnsLayout->setSpacing(15);
     
-    // Content widget for columns
-    QWidget* contentWidget = new QWidget();
-    scrollArea->setWidget(contentWidget);
-    
-    // Two-column layout
-    m_columnsLayout = new QHBoxLayout(contentWidget);
-    m_columnsLayout->setContentsMargins(5, 5, 5, 5);
-    m_columnsLayout->setSpacing(10);
-    
-    // Left and right columns
+    // Left and right columns with equal stretch
     m_leftColumn = new QVBoxLayout();
     m_leftColumn->setSpacing(2);
     m_leftColumn->setAlignment(Qt::AlignTop);
@@ -64,19 +53,31 @@ BtBookPopup::BtBookPopup(QWidget* parent)
     m_rightColumn->setSpacing(2);
     m_rightColumn->setAlignment(Qt::AlignTop);
     
-    m_columnsLayout->addLayout(m_leftColumn);
-    m_columnsLayout->addLayout(m_rightColumn);
+    m_columnsLayout->addLayout(m_leftColumn, 1);  // Equal stretch
+    m_columnsLayout->addLayout(m_rightColumn, 1); // Equal stretch
     
-    m_mainLayout->addWidget(scrollArea);
+    m_mainLayout->addLayout(m_columnsLayout);
     
-    // Set reasonable size
-    setFixedSize(400, 350);
+    // Set larger size to ensure columns are visible
+    setFixedSize(500, 400);
     
-    // Apply styling
+    // Apply better styling
     setStyleSheet(
         "BtBookPopup {"
-        "   background-color: palette(window);"
-        "   border: 1px solid palette(mid);"
+        "   background-color: white;"
+        "   border: 2px solid black;"
+        "   border-radius: 4px;"
+        "}"
+        "QPushButton {"
+        "   text-align: left;"
+        "   padding: 6px 12px;"
+        "   border: none;"
+        "   background: transparent;"
+        "   min-width: 140px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: #3498db;"
+        "   color: white;"
         "}"
     );
 }
@@ -84,23 +85,46 @@ BtBookPopup::BtBookPopup(QWidget* parent)
 void BtBookPopup::setBooks(const QStringList& books) {
     clear();
     
-    // Distribute books between columns
-    bool useLeftColumn = true;
+    if (books.isEmpty()) {
+        return;  // No books to display
+    }
+    
+    // Distribute books between columns for better balance
+    int leftCount = 0;
+    int rightCount = 0;
+    int totalBooks = books.size();
+    int booksPerColumn = (totalBooks + 1) / 2;  // Round up for left column
+    
     for (const QString& bookName : books) {
         QPushButton* button = createBookButton(bookName);
         
-        if (useLeftColumn) {
+        // Put first half in left column, rest in right column
+        if (leftCount < booksPerColumn) {
             m_leftColumn->addWidget(button);
+            leftCount++;
         } else {
             m_rightColumn->addWidget(button);
+            rightCount++;
         }
-        useLeftColumn = !useLeftColumn;
     }
 }
 
 void BtBookPopup::popup(const QPoint& pos) {
-    move(pos);
+    // Ensure the popup appears on screen
+    QRect screenGeometry = QApplication::desktop()->availableGeometry();
+    QPoint adjustedPos = pos;
+    
+    // Adjust position if it would go off-screen
+    if (adjustedPos.x() + width() > screenGeometry.right()) {
+        adjustedPos.setX(screenGeometry.right() - width());
+    }
+    if (adjustedPos.y() + height() > screenGeometry.bottom()) {
+        adjustedPos.setY(pos.y() - height());
+    }
+    
+    move(adjustedPos);
     show();
+    raise();
     activateWindow();
     setFocus();
 }
@@ -121,22 +145,6 @@ void BtBookPopup::clear() {
 QPushButton* BtBookPopup::createBookButton(const QString& bookName) {
     QPushButton* button = new QPushButton(bookName, this);
     button->setFlat(true);
-    button->setStyleSheet(
-        "QPushButton {"
-        "   text-align: left;"
-        "   padding: 4px 8px;"
-        "   border: none;"
-        "   background: transparent;"
-        "   min-width: 120px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: palette(highlight);"
-        "   color: palette(highlighted-text);"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: palette(dark);"
-        "}"
-    );
     
     connect(button, &QPushButton::clicked, [this, bookName]() {
         Q_EMIT bookSelected(bookName);
