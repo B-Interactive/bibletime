@@ -13,6 +13,7 @@
 #pragma once
 
 #include <QToolButton>
+#include <QObject>
 
 class BtBibleKeyWidget;
 class QMenu;
@@ -33,7 +34,7 @@ Q_SIGNALS:
     void stepItem(int step);
     void bookSelected(const QString& bookName);
 
-private slots:
+private Q_SLOTS:
     void populateMenu();
     void onBookSelected(const QString& bookName);
 
